@@ -1,18 +1,18 @@
 # My First Project
 
-Welcom to my first open source project!
+Welcome to my first open source project!
 
-This repositry contains a simple collection of usefull scripts and notes.
+This repository contains a simple collection of useful scripts and notes.
 
-## Fetures
+## Features
 
 - Easy to use
-- Well documanted
-- Beginer friendly
+- Well documented
+- Beginner friendly
 
-## Instalation
+## Installation
 
-Clone the repositry:
+Clone the repository:
 
 ```bash
 git clone https://github.com/Mcnuggetsss/my-first-project.git
@@ -26,10 +26,10 @@ Run the main script:
 python main.py
 ```
 
-## Contribuiting
+## Contributing
 
-Feel free to open issues and pull requets!
+Feel free to open issues and pull requests!
 
-## Licanse
+## License
 
 MIT
