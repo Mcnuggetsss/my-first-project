@@ -1,0 +1,147 @@
+{% extends 'base.html' %}
+{% block title %}客户管理{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1><i class="bi bi-people me-2"></i>客户管理</h1>
+  <button class="btn btn-brand" onclick="openModal()">
+    <i class="bi bi-plus-lg me-1"></i>添加客户
+  </button>
+</div>
+
+<div class="card mb-3">
+  <div class="card-body py-2">
+    <input type="text" id="search" class="form-control" placeholder="搜索客户名称、联系人、电话…" oninput="filterTable()">
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-body p-0">
+    <div class="table-responsive">
+    <table class="table table-hover mb-0 align-middle" id="ctable">
+      <thead><tr>
+        <th class="ps-3">客户名称</th><th>联系人</th><th>电话</th>
+        <th>邮箱</th><th>地址</th><th>备注</th><th></th>
+      </tr></thead>
+      <tbody>
+      {% for c in customers %}
+      <tr data-search="{{ c.name }} {{ c.contact }} {{ c.phone }}">
+        <td class="ps-3"><strong>{{ c.name }}</strong></td>
+        <td>{{ c.contact or '—' }}</td>
+        <td>{{ c.phone or '—' }}</td>
+        <td>{{ c.email or '—' }}</td>
+        <td>{{ c.address or '—' }}</td>
+        <td style="max-width:120px"><span class="text-truncate d-block text-muted" style="font-size:.82rem">{{ c.notes or '' }}</span></td>
+        <td>
+          <button class="btn btn-sm btn-outline-secondary me-1"
+            onclick="openModal({{ c.id }},'{{ c.name|e }}','{{ c.contact|e }}','{{ c.phone|e }}','{{ c.email|e }}','{{ c.address|e }}','{{ c.notes|e }}')">
+            <i class="bi bi-pencil"></i>
+          </button>
+          <button class="btn btn-sm btn-outline-danger" onclick="deleteCustomer({{ c.id }},'{{ c.name|e }}')">
+            <i class="bi bi-trash"></i>
+          </button>
+        </td>
+      </tr>
+      {% endfor %}
+      {% if not customers %}
+      <tr><td colspan="7" class="text-center text-muted py-4">暂无客户，请添加</td></tr>
+      {% endif %}
+      </tbody>
+    </table>
+    </div>
+  </div>
+</div>
+
+<!-- Modal -->
+<div class="modal fade" id="cmodal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="modal-title">添加客户</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="c-id">
+        <div class="row g-2">
+          <div class="col-12">
+            <label class="form-label">客户名称 <span class="text-danger">*</span></label>
+            <input type="text" id="c-name" class="form-control" placeholder="公司或个人名称">
+          </div>
+          <div class="col-6">
+            <label class="form-label">联系人</label>
+            <input type="text" id="c-contact" class="form-control">
+          </div>
+          <div class="col-6">
+            <label class="form-label">电话</label>
+            <input type="text" id="c-phone" class="form-control">
+          </div>
+          <div class="col-6">
+            <label class="form-label">邮箱</label>
+            <input type="email" id="c-email" class="form-control">
+          </div>
+          <div class="col-6">
+            <label class="form-label">地址</label>
+            <input type="text" id="c-address" class="form-control">
+          </div>
+          <div class="col-12">
+            <label class="form-label">备注</label>
+            <textarea id="c-notes" class="form-control" rows="2"></textarea>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+        <button class="btn btn-brand" onclick="saveCustomer()">保存</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const modal = new bootstrap.Modal(document.getElementById('cmodal'));
+
+function openModal(id,name,contact,phone,email,address,notes) {
+  document.getElementById('modal-title').textContent = id ? '编辑客户' : '添加客户';
+  document.getElementById('c-id').value      = id      || '';
+  document.getElementById('c-name').value    = name    || '';
+  document.getElementById('c-contact').value = contact || '';
+  document.getElementById('c-phone').value   = phone   || '';
+  document.getElementById('c-email').value   = email   || '';
+  document.getElementById('c-address').value = address || '';
+  document.getElementById('c-notes').value   = notes   || '';
+  modal.show();
+}
+
+async function saveCustomer() {
+  const data = {
+    id:      document.getElementById('c-id').value || null,
+    name:    document.getElementById('c-name').value.trim(),
+    contact: document.getElementById('c-contact').value.trim(),
+    phone:   document.getElementById('c-phone').value.trim(),
+    email:   document.getElementById('c-email').value.trim(),
+    address: document.getElementById('c-address').value.trim(),
+    notes:   document.getElementById('c-notes').value.trim(),
+  };
+  if (!data.name) { alert('请填写客户名称'); return; }
+  await fetch('/customers/save', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify(data)
+  });
+  location.reload();
+}
+
+async function deleteCustomer(id, name) {
+  if (!confirm(`确认删除客户「${name}」？`)) return;
+  await fetch(`/customers/${id}/delete`, {method:'POST'});
+  location.reload();
+}
+
+function filterTable() {
+  const q = document.getElementById('search').value.toLowerCase();
+  document.querySelectorAll('#ctable tbody tr').forEach(tr => {
+    tr.style.display = (tr.dataset.search||'').toLowerCase().includes(q) ? '' : 'none';
+  });
+}
+</script>
+{% endblock %}

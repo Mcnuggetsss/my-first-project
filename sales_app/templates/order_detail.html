@@ -1,0 +1,115 @@
+{% extends 'base.html' %}
+{% block title %}订单 {{ order.order_number }}{% endblock %}
+{% block head %}
+<style>
+@media print {
+  .print-area { max-width:100%; }
+  body { background:#fff; }
+  .invoice { box-shadow:none; border:none; }
+}
+.invoice { background:#fff; border-radius:10px; padding:32px; box-shadow:0 1px 4px rgba(0,0,0,.08); }
+.inv-header { border-bottom:3px solid var(--brand); padding-bottom:16px; margin-bottom:20px; }
+.inv-title { font-size:1.6rem; font-weight:800; color:var(--brand); letter-spacing:.05em; }
+.inv-meta { font-size:.85rem; color:#6b7280; }
+.inv-table th { background:#f3f4f6; font-size:.82rem; }
+.inv-total { background:var(--brand-light); border-radius:8px; padding:14px 20px; }
+</style>
+{% endblock %}
+{% block content %}
+<div class="page-header no-print">
+  <h1><i class="bi bi-receipt me-2"></i>销售单详情</h1>
+  <div class="d-flex gap-2">
+    <button onclick="window.print()" class="btn btn-brand"><i class="bi bi-printer me-1"></i>打印 / 导出PDF</button>
+    <a href="/orders" class="btn btn-outline-secondary">返回列表</a>
+    <form action="/orders/{{ order.id }}/delete" method="POST"
+          onsubmit="return confirm('确认删除此订单？')">
+      <button class="btn btn-outline-danger"><i class="bi bi-trash me-1"></i>删除</button>
+    </form>
+  </div>
+</div>
+
+<div class="print-area" style="max-width:860px">
+  <div class="invoice">
+    <div class="inv-header d-flex justify-content-between align-items-start">
+      <div>
+        <div class="inv-title">销售单</div>
+        <div class="inv-meta mt-1">
+          <strong>单号：</strong>{{ order.order_number }}<br>
+          <strong>日期：</strong>{{ order.order_date }}<br>
+          <strong>状态：</strong>
+          {% if order.status == 'confirmed' %}<span class="badge badge-confirmed">已确认</span>
+          {% elif order.status == 'pending' %}<span class="badge badge-pending">待确认</span>
+          {% else %}<span class="badge badge-cancelled">已取消</span>{% endif %}
+        </div>
+      </div>
+      <div class="text-end">
+        <div style="font-size:1.1rem;font-weight:700;color:var(--brand)">食品批发有限公司</div>
+        <div class="inv-meta">
+          <strong>客户：</strong>{{ order.customer_name or '—' }}<br>
+          {% if order.notes %}<strong>备注：</strong>{{ order.notes }}{% endif %}
+        </div>
+      </div>
+    </div>
+
+    <table class="table inv-table align-middle">
+      <thead><tr>
+        <th>#</th>
+        <th>产品名称</th>
+        <th>系列/分类</th>
+        <th class="text-center">数量</th>
+        <th class="text-end">单价(€)</th>
+        <th class="text-end">小计(€)</th>
+      </tr></thead>
+      <tbody>
+      {% for item in items %}
+      <tr>
+        <td class="text-muted">{{ loop.index }}</td>
+        <td><strong>{{ item.product_name }}</strong></td>
+        <td class="text-muted" style="font-size:.82rem">
+          {{ item.series }}{% if item.large_category %} › {{ item.large_category }}{% endif %}
+          {% if item.small_category %} › {{ item.small_category }}{% endif %}
+        </td>
+        <td class="text-center">{{ item.quantity }} {{ item.unit }}</td>
+        <td class="text-end">{{ "%.2f"|format(item.unit_price) }}</td>
+        <td class="text-end fw-semibold">{{ "%.2f"|format(item.subtotal) }}</td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+
+    <div class="inv-total d-flex justify-content-between align-items-center">
+      <span style="font-size:1rem;font-weight:600">共 {{ items|length }} 项</span>
+      <div class="text-end">
+        <div style="font-size:.85rem;color:#6b7280">合计金额</div>
+        <div style="font-size:2rem;font-weight:800;color:var(--brand)">€{{ "%.2f"|format(order.total) }}</div>
+      </div>
+    </div>
+
+    <div class="mt-4 pt-3 border-top d-flex justify-content-between inv-meta">
+      <span>创建时间：{{ order.created_at }}</span>
+      <span>签字确认：_______________</span>
+    </div>
+  </div>
+</div>
+
+<!-- Status change (no-print) -->
+<div class="mt-3 no-print d-flex gap-2">
+  <span class="text-muted me-2 align-self-center">更改状态：</span>
+  {% for s,label in [('confirmed','已确认'),('pending','待确认'),('cancelled','已取消')] %}
+  <button class="btn btn-sm btn-outline-secondary {{ 'active' if order.status==s else '' }}"
+          onclick="setStatus('{{ s }}','{{ label }}')">{{ label }}</button>
+  {% endfor %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function setStatus(s, label) {
+  await fetch('/orders/{{ order.id }}/status', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({status:s})
+  });
+  location.reload();
+}
+</script>
+{% endblock %}

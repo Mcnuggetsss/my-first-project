@@ -1,0 +1,161 @@
+{% extends 'base.html' %}
+{% block title %}产品管理{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1><i class="bi bi-box-seam me-2"></i>产品管理</h1>
+  <button class="btn btn-brand" onclick="openModal()">
+    <i class="bi bi-plus-lg me-1"></i>添加产品
+  </button>
+</div>
+
+<div class="card mb-3">
+  <div class="card-body py-2">
+    <input type="text" id="search" class="form-control" placeholder="搜索产品名称、系列、分类…" oninput="filterTable()">
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-body p-0">
+    <div class="table-responsive">
+    <table class="table table-hover mb-0 align-middle" id="ptable">
+      <thead><tr>
+        <th class="ps-3">系列</th><th>大分类</th><th>小分类</th><th>产品名称</th>
+        <th class="text-center">单位</th><th class="text-end">单价(€)</th>
+        <th class="text-end">库存</th><th></th>
+      </tr></thead>
+      <tbody>
+      {% for p in products %}
+      <tr data-search="{{ p.series }} {{ p.large_category }} {{ p.small_category }} {{ p.name }}">
+        <td class="ps-3">{{ p.series }}</td>
+        <td>{{ p.large_category }}</td>
+        <td>{{ p.small_category }}</td>
+        <td><strong>{{ p.name }}</strong></td>
+        <td class="text-center">{{ p.unit }}</td>
+        <td class="text-end">{{ "%.2f"|format(p.price) }}</td>
+        <td class="text-end {{ 'text-danger fw-bold' if p.stock < 10 else '' }}">{{ p.stock }}</td>
+        <td>
+          <button class="btn btn-sm btn-outline-secondary me-1"
+            onclick="openModal({{ p.id }},'{{ p.series|e }}','{{ p.large_category|e }}','{{ p.small_category|e }}','{{ p.name|e }}','{{ p.unit|e }}',{{ p.price }},{{ p.stock }})">
+            <i class="bi bi-pencil"></i>
+          </button>
+          <button class="btn btn-sm btn-outline-danger" onclick="deleteProduct({{ p.id }},'{{ p.name|e }}')">
+            <i class="bi bi-trash"></i>
+          </button>
+        </td>
+      </tr>
+      {% endfor %}
+      {% if not products %}
+      <tr><td colspan="8" class="text-center text-muted py-4">暂无产品，请添加</td></tr>
+      {% endif %}
+      </tbody>
+    </table>
+    </div>
+  </div>
+</div>
+
+<!-- Modal -->
+<div class="modal fade" id="pmodal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="modal-title">添加产品</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="p-id">
+        <div class="row g-2">
+          <div class="col-4">
+            <label class="form-label">系列 <span class="text-danger">*</span></label>
+            <input type="text" id="p-series" class="form-control" placeholder="如：干货">
+          </div>
+          <div class="col-4">
+            <label class="form-label">大分类 <span class="text-danger">*</span></label>
+            <input type="text" id="p-large" class="form-control" placeholder="如：豆类">
+          </div>
+          <div class="col-4">
+            <label class="form-label">小分类 <span class="text-danger">*</span></label>
+            <input type="text" id="p-small" class="form-control" placeholder="如：黄豆">
+          </div>
+          <div class="col-8">
+            <label class="form-label">产品名称 <span class="text-danger">*</span></label>
+            <input type="text" id="p-name" class="form-control" placeholder="产品全称">
+          </div>
+          <div class="col-4">
+            <label class="form-label">单位</label>
+            <input type="text" id="p-unit" class="form-control" placeholder="kg / 箱 / 袋">
+          </div>
+          <div class="col-6">
+            <label class="form-label">单价 (€) <span class="text-danger">*</span></label>
+            <div class="input-group">
+              <span class="input-group-text">€</span>
+              <input type="number" id="p-price" class="form-control" step="0.01" min="0">
+            </div>
+          </div>
+          <div class="col-6">
+            <label class="form-label">初始库存</label>
+            <input type="number" id="p-stock" class="form-control" step="0.01" min="0" value="0">
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+        <button class="btn btn-brand" onclick="saveProduct()">保存</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const modal = new bootstrap.Modal(document.getElementById('pmodal'));
+
+function openModal(id,series,large,small,name,unit,price,stock) {
+  document.getElementById('modal-title').textContent = id ? '编辑产品' : '添加产品';
+  document.getElementById('p-id').value    = id    || '';
+  document.getElementById('p-series').value= series|| '';
+  document.getElementById('p-large').value = large || '';
+  document.getElementById('p-small').value = small || '';
+  document.getElementById('p-name').value  = name  || '';
+  document.getElementById('p-unit').value  = unit  || 'kg';
+  document.getElementById('p-price').value = price !== undefined ? price : '';
+  document.getElementById('p-stock').value = stock !== undefined ? stock : 0;
+  modal.show();
+}
+
+async function saveProduct() {
+  const data = {
+    id:     document.getElementById('p-id').value || null,
+    series: document.getElementById('p-series').value.trim(),
+    large_category: document.getElementById('p-large').value.trim(),
+    small_category: document.getElementById('p-small').value.trim(),
+    name:   document.getElementById('p-name').value.trim(),
+    unit:   document.getElementById('p-unit').value.trim() || 'kg',
+    price:  parseFloat(document.getElementById('p-price').value) || 0,
+    stock:  parseFloat(document.getElementById('p-stock').value) || 0,
+  };
+  if (!data.series||!data.large_category||!data.small_category||!data.name) {
+    alert('请填写系列、大分类、小分类和产品名称'); return;
+  }
+  await fetch('/products/save', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify(data)
+  });
+  location.reload();
+}
+
+async function deleteProduct(id, name) {
+  if (!confirm(`确认删除产品「${name}」？`)) return;
+  await fetch(`/products/${id}/delete`, {method:'POST'});
+  location.reload();
+}
+
+function filterTable() {
+  const q = document.getElementById('search').value.toLowerCase();
+  document.querySelectorAll('#ptable tbody tr').forEach(tr => {
+    const s = (tr.dataset.search||'').toLowerCase();
+    tr.style.display = s.includes(q) ? '' : 'none';
+  });
+}
+</script>
+{% endblock %}

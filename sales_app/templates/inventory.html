@@ -1,0 +1,93 @@
+{% extends 'base.html' %}
+{% block title %}库存管理{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1><i class="bi bi-archive me-2"></i>库存管理</h1>
+</div>
+
+<div class="card mb-3">
+  <div class="card-body py-2 d-flex gap-2">
+    <input type="text" id="search" class="form-control" placeholder="搜索产品名称、系列…" oninput="filterTable()">
+    <select id="f-status" class="form-select" style="width:140px" onchange="filterTable()">
+      <option value="">全部库存</option>
+      <option value="low">低库存(&lt;10)</option>
+      <option value="ok">正常</option>
+    </select>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-body p-0">
+    <div class="table-responsive">
+    <table class="table table-hover mb-0 align-middle" id="itable">
+      <thead><tr>
+        <th class="ps-3">系列</th><th>大分类</th><th>小分类</th>
+        <th>产品名称</th><th class="text-center">单位</th>
+        <th class="text-end" style="width:180px">库存数量</th>
+        <th class="text-end">操作</th>
+      </tr></thead>
+      <tbody>
+      {% for p in products %}
+      <tr data-search="{{ p.series }} {{ p.large_category }} {{ p.small_category }} {{ p.name }}"
+          data-stock="{{ p.stock }}">
+        <td class="ps-3">{{ p.series }}</td>
+        <td>{{ p.large_category }}</td>
+        <td>{{ p.small_category }}</td>
+        <td><strong>{{ p.name }}</strong></td>
+        <td class="text-center">{{ p.unit }}</td>
+        <td class="text-end">
+          <div class="d-flex align-items-center justify-content-end gap-2">
+            {% if p.stock < 10 %}
+            <span class="badge bg-danger">低库存</span>
+            {% endif %}
+            <input type="number" class="form-control form-control-sm text-end stock-input"
+                   style="width:90px" value="{{ p.stock }}" step="0.01" min="0"
+                   data-id="{{ p.id }}" data-orig="{{ p.stock }}">
+          </div>
+        </td>
+        <td class="text-end">
+          <button class="btn btn-sm btn-brand" onclick="updateStock({{ p.id }})">
+            <i class="bi bi-check2"></i> 更新
+          </button>
+        </td>
+      </tr>
+      {% endfor %}
+      {% if not products %}
+      <tr><td colspan="7" class="text-center text-muted py-4">暂无产品</td></tr>
+      {% endif %}
+      </tbody>
+    </table>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function updateStock(pid) {
+  const input = document.querySelector(`.stock-input[data-id="${pid}"]`);
+  const stock = parseFloat(input.value);
+  if (isNaN(stock) || stock < 0) { alert('请输入有效库存数量'); return; }
+  const res = await fetch(`/inventory/${pid}/update`, {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({stock})
+  });
+  if ((await res.json()).success) {
+    input.dataset.orig = stock;
+    input.style.background = '#d1fae5';
+    setTimeout(()=>{ input.style.background=''; }, 1200);
+  }
+}
+
+function filterTable() {
+  const q  = document.getElementById('search').value.toLowerCase();
+  const fs = document.getElementById('f-status').value;
+  document.querySelectorAll('#itable tbody tr').forEach(tr => {
+    const textOk = (tr.dataset.search||'').toLowerCase().includes(q);
+    const stock  = parseFloat(tr.dataset.stock||0);
+    const stockOk = !fs || (fs==='low' ? stock<10 : stock>=10);
+    tr.style.display = (textOk && stockOk) ? '' : 'none';
+  });
+}
+</script>
+{% endblock %}
